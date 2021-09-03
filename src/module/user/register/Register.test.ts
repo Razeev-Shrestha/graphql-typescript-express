@@ -2,6 +2,9 @@ import { gCall } from '../../../test/gCall'
 import { Connection } from 'typeorm'
 import { testConnection } from '../../../test/testConnection'
 import { redis } from '../../../redis'
+import faker from 'faker'
+import { User } from 'src/entity/User'
+
 let connection: Connection
 
 beforeAll(async () => {
@@ -31,18 +34,31 @@ mutation Register($data:RegisterInput!) {
 
 describe('Register', () => {
 	it('create user', async () => {
-		console.log(
-			await gCall({
-				source: registerMutation,
-				variableValues: {
-					data: {
-						firstName: 'john',
-						lastName: 'Doe',
-						email: 'johndoe@gmail.com',
-						password: 'johndoe123',
-					},
+		const user = {
+			firstName: faker.name.firstName(),
+			lastName: faker.name.lastName(),
+			email: faker.internet.email(),
+			password: faker.internet.password(),
+		}
+
+		const response = await gCall({
+			source: registerMutation,
+			variableValues: {
+				data: user,
+			},
+		})
+		expect(response).toMatchObject({
+			data: {
+				register: {
+					firstName: user.firstName,
+					lastName: user.lastName,
+					email: user.email,
 				},
-			})
-		)
+			},
+		})
+		const dbUser = await User.findOne({ where: { email: user.email } })
+		expect(dbUser).toBeDefined()
+		expect(dbUser!.confirmed).toBeFalsy()
+		expect(dbUser!.firstName).toBe(user.firstName)
 	})
 })
